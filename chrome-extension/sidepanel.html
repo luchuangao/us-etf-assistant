@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>美股定投助手 (US ETF DCA Assistant)</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .app { width: 360px; height: 100vh; display: flex; flex-direction: column; }
+    .sidebar { display: none; }
+    .tabs { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; background: #f4f4f5; position: sticky; top: 0; z-index: 2; flex-shrink: 0; }
+    .seg { display: inline-flex; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; }
+    .seg button { padding: 7px 10px; border: 0; background: transparent; font-size: 12px; }
+    .seg button.active { background: #111418; color: #fff; }
+    .status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+    .status button { padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; font-size: 11px; }
+    .main { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+    .hero { padding: 10px 12px 2px; background: #f4f4f5; }
+    .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .hero h1 { margin: 0; font-size: 30px; letter-spacing: -0.5px; }
+    .hero .sub { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .hero-right { text-align: right; }
+    .hero-price { font-size: 16px; font-weight: 700; }
+    .hero-change { font-size: 12px; margin-top: 2px; }
+    .hairline { height: 1px; background: #e5e7eb; margin-top: 10px; }
+    .touchbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #f4f4f5; border-bottom: 1px solid #e5e7eb; }
+    .ranges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ranges button { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 18px; background: #fff; font-size: 12px; }
+    .ranges button.active { background: #111418; color: #fff; border-color: #111418; }
+    .chart-wrap { height: 330px; padding: 0 0 6px; position: relative; background: #f4f4f5; }
+    .fixedbar { position: absolute; top: 0; left: 0; right: 0; padding: 8px 12px 6px; text-align: center; font-size: 12px; color: #111418; pointer-events: none; }
+    .fixedbar .val { color: #1e88e5; font-weight: 600; margin-left: 8px; }
+    .tooltip { position: absolute; top: 44px; left: 12px; padding: 6px 8px; border-radius: 12px; background: rgba(255,255,255,0.92); border: 1px solid #e5e7eb; font-size: 11px; color: #111418; display: none; }
+    .subtabs { display: flex; gap: 8px; padding: 8px 12px; border-top: 1px solid #e5e7eb; background: #f4f4f5; }
+    .subtabs button { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; font-size: 12px; }
+    .subtabs button.active { background: #111418; color: #fff; border-color: #111418; }
+    .panel { flex: 1; padding: 10px 12px 16px; background: #f4f4f5; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 10px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row input, .row select { padding: 7px 8px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 12px; }
+    .row button { padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; font-size: 12px; }
+    .kvs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+    .kvs div { background: var(--panel); border-radius: 12px; padding: 8px; }
+    .kvs span { color: var(--muted); font-size: 11px; }
+    .kvs strong { display: block; margin-top: 2px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 8px 6px; border-bottom: 1px solid #eef0f3; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    .facts { padding: 0 12px 10px; background: #f4f4f5; }
+    .facts .card { padding: 0; }
+    .facts table td { padding: 10px 10px; }
+    .facts table tr td:first-child { color: var(--muted); }
+  </style>
+  </head>
+<body>
+  <div class="app">
+    <main class="main">
+      <div class="tabs">
+        <div class="seg">
+          <button id="sym-spy" class="active">标普500 (SPY)</button>
+          <button id="sym-qqq">纳指100 (QQQ)</button>
+        </div>
+        <div class="status">
+          <div id="dataStatus"></div>
+          <button id="btn-refresh">刷新</button>
+        </div>
+      </div>
+      <section class="hero">
+        <div class="hero-top">
+          <div>
+            <h1 id="tickerTitle"></h1>
+            <div id="tickerMeta" class="sub"></div>
+          </div>
+          <div class="hero-right">
+            <div id="price" class="hero-price"></div>
+            <div id="rangeChange" class="hero-change"></div>
+          </div>
+        </div>
+        <div class="hairline"></div>
+      </section>
+      <div class="touchbar">
+        <div class="ranges" id="ranges"></div>
+        <div style="margin-left:auto">
+          <label style="font-size:12px;color:var(--muted)"><input type="checkbox" id="useLog"> 对数</label>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div id="fixedbar" class="fixedbar"></div>
+        <canvas id="chartCanvas"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </div>
+      <section class="facts">
+        <div class="card">
+          <table>
+            <tbody>
+              <tr><td>今日开盘价</td><td id="open"></td><td>52周最高价</td><td id="fiftyTwoWeekHigh"></td></tr>
+              <tr><td>今日最高价</td><td id="high"></td><td>52周最低价</td><td id="fiftyTwoWeekLow"></td></tr>
+              <tr><td>今日最低价</td><td id="low"></td><td>成交量</td><td id="volume"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <div class="subtabs">
+        <button id="tab-dca" class="active">定投</button>
+        <button id="tab-dd">回撤</button>
+        <button id="tab-opp">机会</button>
+      </div>
+      <section id="panel-dca" class="panel">
+        <div class="card">
+          <div class="row">
+            <label>每月定投</label>
+            <input id="dcaAmount" type="number" min="0" step="100" value="1000">
+            <label>起始</label>
+            <select id="dcaStart"></select>
+            <button id="btn-run-dca">计算</button>
+          </div>
+          <div class="kvs">
+            <div><span>总投入</span><strong id="dcaInvested"></strong></div>
+            <div><span>期末市值</span><strong id="dcaValue"></strong></div>
+            <div><span>定投年化(IRR)</span><strong id="dcaIrr"></strong></div>
+            <div><span>一次性投入期末</span><strong id="lsValue"></strong></div>
+          </div>
+        </div>
+      </section>
+      <section id="panel-dd" class="panel" style="display:none">
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>年份</th>
+                <th>最大回撤</th>
+                <th>发生日期</th>
+                <th>修复天数</th>
+              </tr>
+            </thead>
+            <tbody id="ddTable"></tbody>
+          </table>
+        </div>
+      </section>
+      <section id="panel-opp" class="panel" style="display:none">
+        <div class="card">
+          <div class="row">
+            <label>回撤阈值</label>
+            <select id="oppThreshold">
+              <option value="-10">-10%</option>
+              <option value="-15">-15%</option>
+              <option value="-20" selected>-20%</option>
+              <option value="-30">-30%</option>
+              <option value="-40">-40%</option>
+            </select>
+            <button id="btn-run-opp">统计</button>
+          </div>
+          <div style="margin-top:10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>周期</th>
+                  <th>样本</th>
+                  <th>中位数</th>
+                  <th>25%</th>
+                  <th>75%</th>
+                </tr>
+              </thead>
+              <tbody id="oppTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="utils.js"></script>
+  <script src="yahoo.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

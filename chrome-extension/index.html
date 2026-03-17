@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>美股分析助手</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="搜索或输入代码">
+        <button id="addTickerBtn">添加</button>
+      </div>
+      <ul id="tickerList"></ul>
+    </aside>
+    <main class="main">
+      <header class="header">
+        <div class="title">
+          <h1 id="tickerTitle"></h1>
+          <div id="tickerMeta"></div>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">价格</div>
+            <div id="price" class="value"></div>
+          </div>
+          <div class="metric">
+            <div class="label">涨跌</div>
+            <div id="change" class="value"></div>
+          </div>
+          <div class="metric">
+            <div class="label">与VIX相关性</div>
+            <div id="correlation" class="value"></div>
+          </div>
+        </div>
+      </header>
+      <div class="toolbar">
+        <div class="ranges" id="ranges"></div>
+        <div class="toggles">
+          <label><input type="checkbox" id="showVix" checked> 显示VIX</label>
+          <label><input type="checkbox" id="useLog"> 对数坐标</label>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+      <section class="details">
+        <div class="grid">
+          <div><span>今日开盘</span><strong id="open"></strong></div>
+          <div><span>今日最高</span><strong id="high"></strong></div>
+          <div><span>今日最低</span><strong id="low"></strong></div>
+          <div><span>成交量</span><strong id="volume"></strong></div>
+          <div><span>52周最高</span><strong id="fiftyTwoWeekHigh"></strong></div>
+          <div><span>52周最低</span><strong id="fiftyTwoWeekLow"></strong></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="utils.js"></script>
+  <script src="yahoo.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

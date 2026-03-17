@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "美股定投助手 (US ETF DCA Assistant)",
+  "description": "基于历史数据分析SPY/QQQ定投收益、最大回撤与投资机会，专为长期投资者设计。",
+  "version": "0.1.0",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "美股分析"
+  },
+  "permissions": ["storage", "sidePanel"],
+  "host_permissions": [
+    "https://query1.finance.yahoo.com/*",
+    "https://query2.finance.yahoo.com/*",
+    "https://finance.yahoo.com/*",
+    "https://stooq.com/*"
+  ]
+}
