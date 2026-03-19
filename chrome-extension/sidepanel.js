@@ -487,7 +487,16 @@ function computeOpportunity(series, vixSeries, type, threshold) {
   let peak = -Infinity;
   let inEvent = false;
   const events = [];
-  const vixMap = vixSeries ? new Map(vixSeries.map(p => [p[0], p[1]])) : new Map();
+  
+  // 建立 VIX 日期查找表（归一化到天，忽略时分秒差异）
+  const vixMap = new Map();
+  if (vixSeries) {
+    vixSeries.forEach(p => {
+      const d = new Date(p[0]);
+      const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+      vixMap.set(key, p[1]);
+    });
+  }
 
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
@@ -499,7 +508,9 @@ function computeOpportunity(series, vixSeries, type, threshold) {
       const dd = peak > 0 ? (price / peak - 1) : 0;
       if (dd <= thr) triggered = true;
     } else if (type === "vix") {
-      const v = vixMap.get(ts);
+      const d = new Date(ts);
+      const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+      const v = vixMap.get(key);
       if (v != null && v >= thr) triggered = true;
     }
 

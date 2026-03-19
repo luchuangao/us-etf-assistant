@@ -27,6 +27,8 @@ function cacheGet(key, ttlMs) {
   try {
     const obj = JSON.parse(raw);
     if (!obj || typeof obj !== "object") return null;
+    // 兼容两种缓存格式：带 ts 包装的，或直接是 series 数据的
+    if (obj.series) return obj;
     if (ttlMs && obj.ts && Date.now() - obj.ts > ttlMs) return null;
     return obj.data;
   } catch {
@@ -187,7 +189,8 @@ async function fetchChart(symbol, range) {
     const lows = [];
     if (!t || !t.length) return { symbol, series: [], source: "yahoo", adjusted: useAdj };
     for (let i = 0; i < t.length; i++) {
-      const v = useAdj ? adj[i] : close[i];
+      // 对于 VIX 指数，它不需要复权，直接使用 close 即可
+      const v = (useAdj && symbol !== "^VIX") ? adj[i] : close[i];
       series.push([t[i] * 1000, v == null ? null : v]);
       const vv = volume && volume[i] != null ? volume[i] : null;
       vols.push([t[i] * 1000, vv]);
