@@ -148,14 +148,12 @@
       <section id="panel-opp" class="panel" style="display:none">
         <div class="card">
           <div class="row">
-            <label>回撤阈值</label>
-            <select id="oppThreshold">
-              <option value="-10">-10%</option>
-              <option value="-15">-15%</option>
-              <option value="-20" selected>-20%</option>
-              <option value="-30">-30%</option>
-              <option value="-40">-40%</option>
+            <label>触发条件</label>
+            <select id="oppType">
+              <option value="dd">回撤幅度</option>
+              <option value="vix">VIX恐慌指数</option>
             </select>
+            <select id="oppThreshold"></select>
             <button id="btn-run-opp">统计</button>
           </div>
           <div style="margin-top:10px">

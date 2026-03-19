@@ -17,10 +17,13 @@ let state = {
   tab: "dca",
   dcaAmount: 1000,
   dcaStartYear: null,
-  oppThreshold: -20
+  oppType: "dd",
+  oppThresholdDd: -20,
+  oppThresholdVix: 30
 };
 
 let lastSeries = null;
+let lastVixSeries = null;
 let lastMeta = null;
 let lastVolume = null;
 let lastOpen = null;
@@ -39,11 +42,18 @@ function loadState() {
   if (s) {
     try { state = { ...state, ...JSON.parse(s) }; } catch {}
   }
+  // migrate old state
+  if (state.oppThreshold !== undefined) {
+    state.oppThresholdDd = state.oppThreshold;
+    delete state.oppThreshold;
+  }
   if (![SYMBOLS.SPY.symbol, SYMBOLS.QQQ.symbol].includes(state.symbol)) state.symbol = SYMBOLS.SPY.symbol;
   if (!["1y", "5y", "10y", "max"].includes(state.range)) state.range = "10y";
   if (!["dca", "dd", "opp"].includes(state.tab)) state.tab = "dca";
   if (typeof state.dcaAmount !== "number" || !Number.isFinite(state.dcaAmount) || state.dcaAmount < 0) state.dcaAmount = 1000;
-  if (typeof state.oppThreshold !== "number" || !Number.isFinite(state.oppThreshold)) state.oppThreshold = -20;
+  if (!state.oppType) state.oppType = "dd";
+  if (typeof state.oppThresholdDd !== "number" || !Number.isFinite(state.oppThresholdDd)) state.oppThresholdDd = -20;
+  if (typeof state.oppThresholdVix !== "number" || !Number.isFinite(state.oppThresholdVix)) state.oppThresholdVix = 30;
 }
 
 function saveState() {
@@ -216,15 +226,40 @@ function fillDcaStartOptions(series) {
   }
 }
 
+function fillOppThresholdOptions() {
+  const sel = getEl("oppThreshold");
+  if (!sel) return;
+  sel.innerHTML = "";
+  if (state.oppType === "vix") {
+    [20, 30, 40, 50, 60].forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = String(v);
+      opt.textContent = "> " + v;
+      sel.appendChild(opt);
+    });
+    sel.value = String(state.oppThresholdVix);
+  } else {
+    [-10, -15, -20, -30, -40].forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = String(v);
+      opt.textContent = v + "%";
+      sel.appendChild(opt);
+    });
+    sel.value = String(state.oppThresholdDd);
+  }
+}
+
 function recomputeAll() {
   try {
     if (!lastSeries || lastSeries.length < 10) return;
     const dcaAmountEl = getEl("dcaAmount");
     const dcaStartEl = getEl("dcaStart");
-    const oppEl = getEl("oppThreshold");
+    const oppTypeEl = getEl("oppType");
     if (dcaAmountEl) dcaAmountEl.value = String(state.dcaAmount);
     if (dcaStartEl && state.dcaStartYear) dcaStartEl.value = String(state.dcaStartYear);
-    if (oppEl) oppEl.value = String(state.oppThreshold);
+    if (oppTypeEl) oppTypeEl.value = state.oppType;
+    fillOppThresholdOptions();
+    
     runDca();
     renderYearlyDrawdowns();
     runOpportunity();
@@ -446,26 +481,37 @@ function quantile(sorted, q) {
   return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
 }
 
-function computeOpportunity(series, thresholdPct) {
+function computeOpportunity(series, vixSeries, type, threshold) {
   const pts = series.filter(p => p[1] != null);
-  const thr = thresholdPct / 100;
+  let thr = type === "dd" ? threshold / 100 : threshold;
   let peak = -Infinity;
   let inEvent = false;
   const events = [];
+  const vixMap = vixSeries ? new Map(vixSeries.map(p => [p[0], p[1]])) : new Map();
+
   for (let i = 0; i < pts.length; i++) {
+    const ts = pts[i][0];
     const price = pts[i][1];
-    if (price > peak) {
-      peak = price;
-      inEvent = false;
+    let triggered = false;
+
+    if (type === "dd") {
+      if (price > peak) peak = price;
+      const dd = peak > 0 ? (price / peak - 1) : 0;
+      if (dd <= thr) triggered = true;
+    } else if (type === "vix") {
+      const v = vixMap.get(ts);
+      if (v != null && v >= thr) triggered = true;
     }
-    if (peak > 0) {
-      const dd = price / peak - 1;
-      if (!inEvent && dd <= thr) {
-        events.push({ index: i, ts: pts[i][0], price });
+
+    if (triggered) {
+      if (!inEvent) {
         inEvent = true;
+        events.push({ index: i, ts, price });
       }
+    } else {
+      if (type === "dd" && price >= peak) inEvent = false;
+      else if (type === "vix") inEvent = false;
     }
-    if (inEvent && price >= peak) inEvent = false;
   }
   const horizons = [
     { key: "3m", label: "3个月", offset: 63 },
@@ -501,20 +547,27 @@ function formatPct(n) {
 }
 
 function runOpportunity() {
-  if (!lastSeries || lastSeries.length < 200) return;
-  const thrEl = getEl("oppThreshold");
-  const tbody = getEl("oppTable");
-  if (!thrEl || !tbody) return;
-  const thr = Number(thrEl.value);
-  if (!Number.isFinite(thr)) return;
-  state.oppThreshold = thr;
-  saveState();
-  const rows = computeOpportunity(lastSeries, thr);
-  tbody.innerHTML = "";
-  for (const r of rows) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${r.label}</td><td>${r.n}</td><td>${formatPct(r.median)}</td><td>${formatPct(r.p25)}</td><td>${formatPct(r.p75)}</td>`;
-    tbody.appendChild(tr);
+  try {
+    if (!lastSeries || lastSeries.length < 200) return;
+    const thrEl = getEl("oppThreshold");
+    const tbody = getEl("oppTable");
+    if (!thrEl || !tbody) return;
+    const thr = Number(thrEl.value);
+    if (!Number.isFinite(thr)) return;
+    state[state.oppType === "vix" ? "oppThresholdVix" : "oppThresholdDd"] = thr;
+    saveState();
+    const results = computeOpportunity(lastSeries, lastVixSeries, state.oppType, thr);
+    tbody.innerHTML = "";
+    for (const r of results) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${r.label}</td><td>${r.n}</td>
+        <td class="${r.median >= 0 ? "green" : "red"}">${formatPct(r.median)}</td>
+        <td class="${r.p25 >= 0 ? "green" : "red"}">${formatPct(r.p25)}</td>
+        <td class="${r.p75 >= 0 ? "green" : "red"}">${formatPct(r.p75)}</td>`;
+      tbody.appendChild(tr);
+    }
+  } catch (e) {
+    console.error("runOpportunity error", e);
   }
 }
 
@@ -530,6 +583,10 @@ async function refresh(opts) {
 
     if (preferCache) {
       const cached = readCachedChart(state.symbol, state.range);
+      const cachedVix = readCachedChart("^VIX", state.range);
+      if (cachedVix && cachedVix.series) {
+        lastVixSeries = cachedVix.series;
+      }
       if (cached && cached.series && cached.series.length) {
         lastSeries = cached.series;
         lastMeta = cached.meta || null;
@@ -554,6 +611,16 @@ async function refresh(opts) {
 
     const chart = await YahooAPI.fetchChart(state.symbol, state.range);
     if (!chart || !chart.series || !chart.series.length) throw new Error("图表数据为空");
+    
+    try {
+      const vixChart = await YahooAPI.fetchChart("^VIX", state.range);
+      if (vixChart && vixChart.series) {
+        lastVixSeries = vixChart.series;
+        writeCachedChart("^VIX", state.range, { series: lastVixSeries });
+      }
+    } catch (e) {
+      console.warn("VIX fetch error", e);
+    }
     lastSeries = chart.series;
     lastVolume = chart.volume || null;
     lastOpen = chart.open || null;
@@ -605,7 +672,9 @@ function setupEvents() {
     try {
       const keys = Object.keys(localStorage);
       keys.forEach(k => {
-        if (k.startsWith(`meigu_cache_chart_${symbol}_`)) localStorage.removeItem(k);
+        if (k.startsWith(`meigu_cache_chart_${symbol}_`) || k.startsWith(`meigu_cache_chart_^VIX_`)) {
+          localStorage.removeItem(k);
+        }
       });
     } catch {}
   }
@@ -626,7 +695,18 @@ function setupEvents() {
   getEl("dcaAmount").onchange = () => runDca();
   getEl("dcaStart").onchange = () => runDca();
   getEl("btn-run-opp").onclick = () => runOpportunity();
-  getEl("oppThreshold").onchange = () => runOpportunity();
+  getEl("oppType").onchange = e => {
+    state.oppType = e.target.value;
+    saveState();
+    fillOppThresholdOptions();
+    runOpportunity();
+  };
+  getEl("oppThreshold").onchange = e => {
+    if (state.oppType === "vix") state.oppThresholdVix = Number(e.target.value);
+    else state.oppThresholdDd = Number(e.target.value);
+    saveState();
+    runOpportunity();
+  };
 }
 
 async function init() {
