@@ -387,9 +387,23 @@ function renderYearlyDrawdowns() {
       const tr = document.createElement("tr");
       const dd = r.maxDD;
       const ddText = Number.isFinite(dd) ? (dd * 100).toFixed(1) + "%" : "--";
-      const ddDate = r.troughTs ? formatDate(r.troughTs) : "--";
+      
+      let ddDate = "--";
+      if (r.ddPeakTs && r.troughTs) {
+        // 为了排版紧凑，省略年份前缀如果它们是同一年
+        const start = formatDate(r.ddPeakTs);
+        const end = formatDate(r.troughTs);
+        if (start.substring(0,4) === end.substring(0,4)) {
+           ddDate = `${start} 至 ${end.substring(5)}`;
+        } else {
+           ddDate = `${start} 至 ${end}`;
+        }
+      } else if (r.troughTs) {
+        ddDate = formatDate(r.troughTs);
+      }
+      
       const rec = r.recoveryDays == null ? "--" : String(r.recoveryDays);
-      tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td>${ddDate}</td><td>${rec}</td>`;
+      tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px;">${ddDate}</td><td>${rec}</td>`;
       tbody.appendChild(tr);
     }
   } catch (e) {
