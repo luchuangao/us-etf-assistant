@@ -383,7 +383,21 @@ function renderYearlyDrawdowns() {
     tbody.innerHTML = "";
     if (!lastSeries || lastSeries.length < 10) return;
     const rows = computeYearlyDrawdowns(lastSeries);
+    let totalDD = 0;
+    let ddCount = 0;
+    let totalRec = 0;
+    let recCount = 0;
+
     for (const r of rows) {
+      if (Number.isFinite(r.maxDD) && r.maxDD < 0) {
+        totalDD += r.maxDD;
+        ddCount++;
+      }
+      if (r.recoveryDays != null) {
+        totalRec += r.recoveryDays;
+        recCount++;
+      }
+
       const tr = document.createElement("tr");
       const dd = r.maxDD;
       const ddText = Number.isFinite(dd) ? (dd * 100).toFixed(1) + "%" : "--";
@@ -403,9 +417,19 @@ function renderYearlyDrawdowns() {
       }
       
       const rec = r.recoveryDays == null ? "--" : String(r.recoveryDays);
-      // 移除 ellipsis，允许自然显示，因为侧边栏变宽了
       tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px; text-align: center; white-space: nowrap;">${ddDate}</td><td>${rec}</td>`;
       tbody.appendChild(tr);
+    }
+
+    // 增加平均值统计行
+    if (ddCount > 0) {
+      const avgDD = totalDD / ddCount;
+      const avgRec = recCount > 0 ? Math.round(totalRec / recCount) : "--";
+      const trAvg = document.createElement("tr");
+      trAvg.style.fontWeight = "bold";
+      trAvg.style.backgroundColor = "#f9fafb";
+      trAvg.innerHTML = `<td>平均</td><td class="red">${(avgDD * 100).toFixed(1)}%</td><td style="text-align: center; color: var(--muted);">--</td><td>${avgRec}</td>`;
+      tbody.appendChild(trAvg);
     }
   } catch (e) {
     console.error("renderYearlyDrawdowns error", e);
