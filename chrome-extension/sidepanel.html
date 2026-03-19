@@ -6,7 +6,7 @@
   <title>美股定投助手 (US ETF DCA Assistant)</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    .app { width: 360px; height: 100vh; display: flex; flex-direction: column; }
+    .app { width: 400px; height: 100vh; display: flex; flex-direction: column; }
     .sidebar { display: none; }
     .tabs { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; background: #f4f4f5; position: sticky; top: 0; z-index: 2; flex-shrink: 0; }
     .seg { display: inline-flex; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; }
@@ -55,9 +55,9 @@
       /* 针对表格特定列设置宽度，避免挤压换行 */
       #panel-dd table { table-layout: fixed; }
       #panel-dd th:nth-child(1), #panel-dd td:nth-child(1) { width: 14%; } /* 年份 */
-      #panel-dd th:nth-child(2), #panel-dd td:nth-child(2) { width: 22%; } /* 最大回撤 */
-      #panel-dd th:nth-child(3), #panel-dd td:nth-child(3) { width: 44%; text-align: center; } /* 发生日期 (较宽) */
-      #panel-dd th:nth-child(4), #panel-dd td:nth-child(4) { width: 20%; } /* 修复天数 */
+      #panel-dd th:nth-child(2), #panel-dd td:nth-child(2) { width: 20%; } /* 最大回撤 */
+      #panel-dd th:nth-child(3), #panel-dd td:nth-child(3) { width: 48%; text-align: center; } /* 发生日期 (较宽) */
+      #panel-dd th:nth-child(4), #panel-dd td:nth-child(4) { width: 18%; } /* 修复天数 */
     </style>
   </head>
 <body>

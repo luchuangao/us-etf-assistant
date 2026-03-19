@@ -390,20 +390,21 @@ function renderYearlyDrawdowns() {
       
       let ddDate = "--";
       if (r.ddPeakTs && r.troughTs) {
-        // 为了排版紧凑，省略年份前缀如果它们是同一年
         const start = formatDate(r.ddPeakTs);
         const end = formatDate(r.troughTs);
         if (start.substring(0,4) === end.substring(0,4)) {
            ddDate = `${start} 至 ${end.substring(5)}`;
         } else {
-           ddDate = `${start} 至 ${end}`;
+           // 跨年的情况，缩短年份显示例如 2021-12-27 至 23-01-05，以节省空间
+           ddDate = `${start.substring(2)} 至 ${end.substring(2)}`;
         }
       } else if (r.troughTs) {
         ddDate = formatDate(r.troughTs);
       }
       
       const rec = r.recoveryDays == null ? "--" : String(r.recoveryDays);
-      tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ddDate}</td><td>${rec}</td>`;
+      // 移除 ellipsis，允许自然显示，因为侧边栏变宽了
+      tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px; text-align: center; white-space: nowrap;">${ddDate}</td><td>${rec}</td>`;
       tbody.appendChild(tr);
     }
   } catch (e) {
