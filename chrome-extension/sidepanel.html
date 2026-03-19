@@ -51,6 +51,14 @@
     .facts table td { padding: 10px 10px; }
     .facts table tr td:first-child { color: var(--muted); }
   </style>
+    <style>
+      /* 针对表格特定列设置宽度，避免挤压换行 */
+      #panel-dd table { table-layout: fixed; }
+      #panel-dd th:nth-child(1), #panel-dd td:nth-child(1) { width: 14%; } /* 年份 */
+      #panel-dd th:nth-child(2), #panel-dd td:nth-child(2) { width: 22%; } /* 最大回撤 */
+      #panel-dd th:nth-child(3), #panel-dd td:nth-child(3) { width: 44%; text-align: center; } /* 发生日期 (较宽) */
+      #panel-dd th:nth-child(4), #panel-dd td:nth-child(4) { width: 20%; } /* 修复天数 */
+    </style>
   </head>
 <body>
   <div class="app">

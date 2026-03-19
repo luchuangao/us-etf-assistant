@@ -403,7 +403,7 @@ function renderYearlyDrawdowns() {
       }
       
       const rec = r.recoveryDays == null ? "--" : String(r.recoveryDays);
-      tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px;">${ddDate}</td><td>${rec}</td>`;
+      tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ddDate}</td><td>${rec}</td>`;
       tbody.appendChild(tr);
     }
   } catch (e) {
