@@ -330,25 +330,31 @@ function runDca() {
 function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
+  let runningPeak = -Infinity;
+  let runningPeakTs = null;
+
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
     const y = new Date(ts).getFullYear();
+
+    if (price > runningPeak) {
+      runningPeak = price;
+      runningPeakTs = ts;
+    }
+
     let st = byYear.get(y);
     if (!st) {
-      st = { year: y, peakPrice: -Infinity, peakTs: null, maxDD: 0, ddPeakPrice: null, ddPeakTs: null, troughPrice: null, troughTs: null };
+      st = { year: y, maxDD: 0, ddPeakPrice: null, ddPeakTs: null, troughPrice: null, troughTs: null };
       byYear.set(y, st);
     }
-    if (price > st.peakPrice) {
-      st.peakPrice = price;
-      st.peakTs = ts;
-    }
-    if (st.peakPrice > 0) {
-      const dd = price / st.peakPrice - 1;
+
+    if (runningPeak > 0) {
+      const dd = price / runningPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
-        st.ddPeakPrice = st.peakPrice;
-        st.ddPeakTs = st.peakTs;
+        st.ddPeakPrice = runningPeak;
+        st.ddPeakTs = runningPeakTs;
         st.troughPrice = price;
         st.troughTs = ts;
       }
