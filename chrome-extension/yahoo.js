@@ -169,16 +169,11 @@ async function fetchChart(symbol, range) {
   if (cached) return cached;
   try {
     const interval = rangeToInterval(range);
-    let urlStr = "";
-    if (range === "max") {
-      const period1 = 0; // 1970
-      const period2 = Math.floor(Date.now() / 1000);
-      const p = new URLSearchParams({ period1, period2, interval, includePrePost: "false", events: "div,split" });
-      urlStr = "/v8/finance/chart/" + encodeURIComponent(symbol) + "?" + p.toString();
-    } else {
-      const p = new URLSearchParams({ range, interval, includePrePost: "false", events: "div,split" });
-      urlStr = "/v8/finance/chart/" + encodeURIComponent(symbol) + "?" + p.toString();
-    }
+    const baseUrl = `/v8/finance/chart/${encodeURIComponent(symbol)}?`;
+    const params = range === "max" 
+      ? new URLSearchParams({ period1: 0, period2: Math.floor(Date.now() / 1000), interval, includePrePost: "false", events: "div,split" })
+      : new URLSearchParams({ range, interval, includePrePost: "false", events: "div,split" });
+    const urlStr = baseUrl + params.toString();
     const data = await yFetch(urlStr);
     const r = data.chart && data.chart.result && data.chart.result[0] ? data.chart.result[0] : null;
     if (!r) throw new Error("图表数据格式错误");
