@@ -609,7 +609,7 @@ async function refresh(opts) {
         renderFactsFromChart();
         fillDcaStartOptions(lastSeries);
         recomputeAll();
-        setStatus(cached.meta && cached.meta.updatedAt ? `缓存 ${cached.meta.updatedAt}` : "缓存");
+        setStatus(cached.meta && cached.meta.updatedAt ? `${cached.meta.updatedAt}` : "缓存");
       }
     }
 
@@ -643,7 +643,7 @@ async function refresh(opts) {
     fillDcaStartOptions(lastSeries);
     recomputeAll();
     writeCachedChart(state.symbol, state.range, { series: lastSeries, volume: lastVolume, open: lastOpen, high: lastHigh, low: lastLow, meta: lastMeta });
-    setStatus(`${lastMeta.source} ${lastMeta.updatedAt}`);
+    setStatus(`${lastMeta.updatedAt}`);
   } catch (err) {
     setStatus("失败");
     showError(err);
