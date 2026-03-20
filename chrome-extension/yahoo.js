@@ -170,9 +170,10 @@ async function fetchChart(symbol, range) {
   try {
     const interval = rangeToInterval(range);
     const baseUrl = `/v8/finance/chart/${encodeURIComponent(symbol)}?`;
-    const params = range === "max" 
-      ? new URLSearchParams({ period1: 0, period2: Math.floor(Date.now() / 1000), interval, includePrePost: "false", events: "div,split" })
-      : new URLSearchParams({ range, interval, includePrePost: "false", events: "div,split" });
+    // For QQQ max range, period1=0 might return limited data due to Yahoo backend partitioning.
+    // However, using range=max works correctly for both SPY and QQQ to fetch full history.
+    // We revert to using range=max to ensure QQQ gets data back to 1999.
+    const params = new URLSearchParams({ range, interval, includePrePost: "false", events: "div,split" });
     const urlStr = baseUrl + params.toString();
     const data = await yFetch(urlStr);
     const r = data.chart && data.chart.result && data.chart.result[0] ? data.chart.result[0] : null;
