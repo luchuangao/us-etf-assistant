@@ -365,17 +365,24 @@ function runDca() {
 function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
-  let runningPeak = -Infinity;
-  let runningPeakTs = null;
+  let yearlyPeak = -Infinity;
+  let yearlyPeakTs = null;
+  let currentYear = null;
 
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
     const y = new Date(ts).getFullYear();
 
-    if (price > runningPeak) {
-      runningPeak = price;
-      runningPeakTs = ts;
+    if (y !== currentYear) {
+      currentYear = y;
+      yearlyPeak = price;
+      yearlyPeakTs = ts;
+    }
+
+    if (price > yearlyPeak) {
+      yearlyPeak = price;
+      yearlyPeakTs = ts;
     }
 
     let st = byYear.get(y);
@@ -384,12 +391,12 @@ function computeYearlyDrawdowns(series) {
       byYear.set(y, st);
     }
 
-    if (runningPeak > 0) {
-      const dd = price / runningPeak - 1;
+    if (yearlyPeak > 0) {
+      const dd = price / yearlyPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
-        st.ddPeakPrice = runningPeak;
-        st.ddPeakTs = runningPeakTs;
+        st.ddPeakPrice = yearlyPeak;
+        st.ddPeakTs = yearlyPeakTs;
         st.troughPrice = price;
         st.troughTs = ts;
       }
