@@ -129,7 +129,9 @@ function stooqSymbol(symbol) {
 async function fetchChartStooq(symbol, range) {
   const st = stooqSymbol(symbol);
   if (!st) throw new Error("无可用备用数据源");
-  const url = "https://stooq.com/q/d/l/?s=" + encodeURIComponent(st) + "&i=d";
+  // Stooq without date limits defaults to returning only recent ~10 years of data.
+  // Add &d1=19900101 to force full history for 'max' range.
+  const url = "https://stooq.com/q/d/l/?s=" + encodeURIComponent(st) + "&i=d" + (range === "max" ? "&d1=19900101" : "");
   const r = await fetch(url, { cache: "no-store", mode: "cors" });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const text = await r.text();
