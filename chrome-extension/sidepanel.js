@@ -383,26 +383,22 @@ function runDca() {
 function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
-
-  let currentYear = null;
-  let yearPeak = -Infinity;
-  let yearPeakTs = null;
+  const WINDOW_SIZE = 252; // 过去约1年的交易日天数
 
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
     const y = new Date(ts).getFullYear();
 
-    // 每进入一个新的自然年，重置最高点基准
-    if (y !== currentYear) {
-      currentYear = y;
-      yearPeak = price;
-      yearPeakTs = ts;
-    } else {
-      // 在同一年内，持续更新该年的最高点
-      if (price > yearPeak) {
-        yearPeak = price;
-        yearPeakTs = ts;
+    // 找到该点过去 252 个交易日内的最高点
+    let rollingPeak = -Infinity;
+    let rollingPeakTs = null;
+    const windowStart = Math.max(0, i - WINDOW_SIZE + 1);
+    
+    for (let j = windowStart; j <= i; j++) {
+      if (pts[j][1] > rollingPeak) {
+        rollingPeak = pts[j][1];
+        rollingPeakTs = pts[j][0];
       }
     }
 
@@ -412,12 +408,12 @@ function computeYearlyDrawdowns(series) {
       byYear.set(y, st);
     }
 
-    if (yearPeak > 0) {
-      const dd = price / yearPeak - 1;
+    if (rollingPeak > 0) {
+      const dd = price / rollingPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
-        st.ddPeakPrice = yearPeak;
-        st.ddPeakTs = yearPeakTs;
+        st.ddPeakPrice = rollingPeak;
+        st.ddPeakTs = rollingPeakTs;
         st.troughPrice = price;
         st.troughTs = ts;
       }
@@ -446,10 +442,9 @@ async function renderYearlyDrawdowns() {
     tbody.innerHTML = "";
     if (!lastSeries || lastSeries.length < 10) return;
     
-    // 为了准确计算自然年内回撤，我们依然建议使用完整的历史数据。
-    // 虽然是按年重置最高点，但如果在 1y 视图下（比如当前是 10 月），
-    // lastSeries 可能只包含今年 10 月至今的数据，导致今年前 9 个月的回撤丢失。
-    // 因此这里仍然采用获取 max 数据计算，然后再过滤显示的逻辑，保证数据的完整性和一致性。
+    // 为了让“滚动一年（252天）”的回撤算法在各种视图下结果一致，
+    // 必须确保输入的数据长度足够支撑这个 252 天的滑动窗口。
+    // 因此，我们强制拉取 max 数据进行计算，然后再按当前视图过滤展示。
     let seriesToCompute = lastSeries;
     if (state.range !== "max") {
        const cachedMax = readCachedChart(state.symbol, "max");
@@ -469,7 +464,7 @@ async function renderYearlyDrawdowns() {
     
     const allRows = computeYearlyDrawdowns(seriesToCompute);
     
-    // 只展示当前用户选择的年份范围
+    // 只保留当前视图涉及的年份
     const visibleYears = new Set(lastSeries.map(p => new Date(p[0]).getFullYear()));
     const rows = allRows.filter(r => visibleYears.has(Number(r.year)));
     
