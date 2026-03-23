@@ -383,25 +383,17 @@ function runDca() {
 function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
-  let currentYear = null;
-  let yearPeak = -Infinity;
-  let yearPeakTs = null;
+  let runningPeak = -Infinity;
+  let runningPeakTs = null;
 
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
     const y = new Date(ts).getFullYear();
 
-    // 如果跨年了，重置该年的最高点记录
-    if (y !== currentYear) {
-      currentYear = y;
-      yearPeak = -Infinity;
-      yearPeakTs = null;
-    }
-
-    if (price > yearPeak) {
-      yearPeak = price;
-      yearPeakTs = ts;
+    if (price > runningPeak) {
+      runningPeak = price;
+      runningPeakTs = ts;
     }
 
     let st = byYear.get(y);
@@ -410,12 +402,12 @@ function computeYearlyDrawdowns(series) {
       byYear.set(y, st);
     }
 
-    if (yearPeak > 0) {
-      const dd = price / yearPeak - 1;
+    if (runningPeak > 0) {
+      const dd = price / runningPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
-        st.ddPeakPrice = yearPeak;
-        st.ddPeakTs = yearPeakTs;
+        st.ddPeakPrice = runningPeak;
+        st.ddPeakTs = runningPeakTs;
         st.troughPrice = price;
         st.troughTs = ts;
       }
@@ -437,13 +429,38 @@ function computeYearlyDrawdowns(series) {
   return arr;
 }
 
-function renderYearlyDrawdowns() {
+async function renderYearlyDrawdowns() {
   try {
     const tbody = getEl("ddTable");
     if (!tbody) return;
     tbody.innerHTML = "";
     if (!lastSeries || lastSeries.length < 10) return;
-    const rows = computeYearlyDrawdowns(lastSeries);
+    
+    // 强制使用全局历史数据来计算回撤，确保不同时间范围下 runningPeak 基准一致
+    let seriesToCompute = lastSeries;
+    if (state.range !== "max") {
+       const cachedMax = readCachedChart(state.symbol, "max");
+       if (cachedMax && cachedMax.series && cachedMax.series.length) {
+         seriesToCompute = cachedMax.series;
+       } else {
+         try {
+           const chartMax = await YahooAPI.fetchChart(state.symbol, "max");
+           if (chartMax && chartMax.series) {
+             seriesToCompute = chartMax.series;
+           }
+         } catch(e) {
+           console.warn("Failed to fetch max series for drawdowns", e);
+         }
+       }
+    }
+    
+    // 计算全局回撤
+    const allRows = computeYearlyDrawdowns(seriesToCompute);
+    
+    // 只过滤出当前 lastSeries 中涉及的年份进行显示
+    const visibleYears = new Set(lastSeries.map(p => new Date(p[0]).getFullYear()));
+    const rows = allRows.filter(r => visibleYears.has(Number(r.year)));
+    
     let totalDD = 0;
     let ddCount = 0;
     let totalRec = 0;
