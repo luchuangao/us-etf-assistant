@@ -383,17 +383,23 @@ function runDca() {
 function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
-  let runningPeak = -Infinity;
-  let runningPeakTs = null;
+  const WINDOW_SIZE = 252; // 过去约1年的交易日天数
 
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
     const y = new Date(ts).getFullYear();
 
-    if (price > runningPeak) {
-      runningPeak = price;
-      runningPeakTs = ts;
+    // 找到该点过去 252 个交易日内的最高点
+    let rollingPeak = -Infinity;
+    let rollingPeakTs = null;
+    const windowStart = Math.max(0, i - WINDOW_SIZE + 1);
+    
+    for (let j = windowStart; j <= i; j++) {
+      if (pts[j][1] > rollingPeak) {
+        rollingPeak = pts[j][1];
+        rollingPeakTs = pts[j][0];
+      }
     }
 
     let st = byYear.get(y);
@@ -402,12 +408,12 @@ function computeYearlyDrawdowns(series) {
       byYear.set(y, st);
     }
 
-    if (runningPeak > 0) {
-      const dd = price / runningPeak - 1;
+    if (rollingPeak > 0) {
+      const dd = price / rollingPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
-        st.ddPeakPrice = runningPeak;
-        st.ddPeakTs = runningPeakTs;
+        st.ddPeakPrice = rollingPeak;
+        st.ddPeakTs = rollingPeakTs;
         st.troughPrice = price;
         st.troughTs = ts;
       }
