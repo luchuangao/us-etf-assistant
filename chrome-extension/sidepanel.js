@@ -460,17 +460,11 @@ function renderYearlyDrawdowns() {
         const start = formatDate(r.ddPeakTs);
         const end = formatDate(r.troughTs);
         
-        // 如果是当前年份且未修复，结束日期显示为"至今"
-        const currentYear = new Date().getFullYear();
-        if (r.year === currentYear && r.recoveryDays == null) {
-           ddDate = `${start} 至今`;
+        if (start.substring(0,4) === end.substring(0,4)) {
+           ddDate = `${start} 至 ${end.substring(5)}`;
         } else {
-           if (start.substring(0,4) === end.substring(0,4)) {
-              ddDate = `${start} 至 ${end.substring(5)}`;
-           } else {
-              // 跨年的情况，缩短年份显示例如 2021-12-27 至 23-01-05，以节省空间
-              ddDate = `${start.substring(2)} 至 ${end.substring(2)}`;
-           }
+           // 跨年的情况，缩短年份显示例如 2021-12-27 至 23-01-05，以节省空间
+           ddDate = `${start.substring(2)} 至 ${end.substring(2)}`;
         }
       } else if (r.troughTs) {
         ddDate = formatDate(r.troughTs);
