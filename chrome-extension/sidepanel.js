@@ -362,7 +362,7 @@ function runDca() {
   }
 }
 
-function computeYearlyDrawdowns(series) {
+function computeYearlyDrawdowns(series, lows) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
   let runningPeak = -Infinity;
@@ -371,6 +371,7 @@ function computeYearlyDrawdowns(series) {
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
+    const lowPrice = (lows && lows[i] && lows[i][1] != null) ? lows[i][1] : price;
     const y = new Date(ts).getFullYear();
 
     if (price > runningPeak) {
@@ -385,12 +386,13 @@ function computeYearlyDrawdowns(series) {
     }
 
     if (runningPeak > 0) {
-      const dd = price / runningPeak - 1;
+      // Use low price to calculate the maximum possible drawdown for the day
+      const dd = lowPrice / runningPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
         st.ddPeakPrice = runningPeak;
         st.ddPeakTs = runningPeakTs;
-        st.troughPrice = price;
+        st.troughPrice = lowPrice;
         st.troughTs = ts;
       }
     }
@@ -417,7 +419,7 @@ function renderYearlyDrawdowns() {
     if (!tbody) return;
     tbody.innerHTML = "";
     if (!lastSeries || lastSeries.length < 10) return;
-    const rows = computeYearlyDrawdowns(lastSeries);
+    const rows = computeYearlyDrawdowns(lastSeries, lastLow);
     let totalDD = 0;
     let ddCount = 0;
     let totalRec = 0;
