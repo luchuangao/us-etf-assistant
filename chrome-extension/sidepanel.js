@@ -383,17 +383,25 @@ function runDca() {
 function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
-  let runningPeak = -Infinity;
-  let runningPeakTs = null;
+  let currentYear = null;
+  let yearPeak = -Infinity;
+  let yearPeakTs = null;
 
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
     const y = new Date(ts).getFullYear();
 
-    if (price > runningPeak) {
-      runningPeak = price;
-      runningPeakTs = ts;
+    // 如果跨年了，重置该年的最高点记录
+    if (y !== currentYear) {
+      currentYear = y;
+      yearPeak = -Infinity;
+      yearPeakTs = null;
+    }
+
+    if (price > yearPeak) {
+      yearPeak = price;
+      yearPeakTs = ts;
     }
 
     let st = byYear.get(y);
@@ -402,12 +410,12 @@ function computeYearlyDrawdowns(series) {
       byYear.set(y, st);
     }
 
-    if (runningPeak > 0) {
-      const dd = price / runningPeak - 1;
+    if (yearPeak > 0) {
+      const dd = price / yearPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
-        st.ddPeakPrice = runningPeak;
-        st.ddPeakTs = runningPeakTs;
+        st.ddPeakPrice = yearPeak;
+        st.ddPeakTs = yearPeakTs;
         st.troughPrice = price;
         st.troughTs = ts;
       }
