@@ -108,26 +108,44 @@ function lastNonNullValue(series) {
 }
 
 function compute52wHighLowFromClose(series) {
-  const closes = (series || []).map(p => p[1]).filter(v => v != null && Number.isFinite(v));
-  const slice = closes.length > 252 ? closes.slice(closes.length - 252) : closes;
-  if (!slice.length) return { hi: null, lo: null };
-  return { hi: Math.max(...slice), lo: Math.min(...slice) };
+  const validPoints = (series || []).filter(p => p[1] != null && Number.isFinite(p[1]));
+  const slice = validPoints.length > 252 ? validPoints.slice(validPoints.length - 252) : validPoints;
+  if (!slice.length) return { hi: null, lo: null, hiDate: null, loDate: null };
+
+  let hi = -Infinity, lo = Infinity, hiDate = null, loDate = null;
+  for (const [ts, val] of slice) {
+    if (val > hi) { hi = val; hiDate = ts; }
+    if (val < lo) { lo = val; loDate = ts; }
+  }
+  return { hi, lo, hiDate, loDate };
 }
 
 function renderFactsFromChart() {
   try {
-    const safeSet = (id, text) => { const el = getEl(id); if (el) el.textContent = text; };
+    const safeSetHTML = (id, html) => { const el = getEl(id); if (el) el.innerHTML = html; };
+    const safeSetText = (id, text) => { const el = getEl(id); if (el) el.textContent = text; };
     const o = lastNonNullValue(typeof lastOpen !== 'undefined' ? lastOpen : null);
     const h = lastNonNullValue(typeof lastHigh !== 'undefined' ? lastHigh : null);
     const l = lastNonNullValue(typeof lastLow !== 'undefined' ? lastLow : null);
     const v = lastNonNullValue(typeof lastVolume !== 'undefined' ? lastVolume : null);
     const hl = compute52wHighLowFromClose(lastSeries);
-    safeSet("open", o == null ? "--" : MeiguUtils.toFixed2(o));
-    safeSet("high", h == null ? "--" : MeiguUtils.toFixed2(h));
-    safeSet("low", l == null ? "--" : MeiguUtils.toFixed2(l));
-    safeSet("volume", v == null ? "--" : MeiguUtils.formatNumber(v));
-    safeSet("fiftyTwoWeekHigh", hl.hi == null ? "--" : MeiguUtils.toFixed2(hl.hi));
-    safeSet("fiftyTwoWeekLow", hl.lo == null ? "--" : MeiguUtils.toFixed2(hl.lo));
+    
+    safeSetText("open", o == null ? "--" : MeiguUtils.toFixed2(o));
+    safeSetText("high", h == null ? "--" : MeiguUtils.toFixed2(h));
+    safeSetText("low", l == null ? "--" : MeiguUtils.toFixed2(l));
+    safeSetText("volume", v == null ? "--" : MeiguUtils.formatNumber(v));
+    
+    if (hl.hi != null) {
+      safeSetHTML("fiftyTwoWeekHigh", `${MeiguUtils.toFixed2(hl.hi)} <span style="font-size: 11px; color: var(--muted); margin-left: 4px;">(${formatDate(hl.hiDate)})</span>`);
+    } else {
+      safeSetText("fiftyTwoWeekHigh", "--");
+    }
+    
+    if (hl.lo != null) {
+      safeSetHTML("fiftyTwoWeekLow", `${MeiguUtils.toFixed2(hl.lo)} <span style="font-size: 11px; color: var(--muted); margin-left: 4px;">(${formatDate(hl.loDate)})</span>`);
+    } else {
+      safeSetText("fiftyTwoWeekLow", "--");
+    }
   } catch (e) {
     console.error("renderFacts error:", e);
     getEl("open").textContent = "Err";
@@ -362,7 +380,7 @@ function runDca() {
   }
 }
 
-function computeYearlyDrawdowns(series, lows) {
+function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
   let runningPeak = -Infinity;
@@ -371,7 +389,6 @@ function computeYearlyDrawdowns(series, lows) {
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
-    const lowPrice = (lows && lows[i] && lows[i][1] != null) ? lows[i][1] : price;
     const y = new Date(ts).getFullYear();
 
     if (price > runningPeak) {
@@ -386,13 +403,12 @@ function computeYearlyDrawdowns(series, lows) {
     }
 
     if (runningPeak > 0) {
-      // Use low price to calculate the maximum possible drawdown for the day
-      const dd = lowPrice / runningPeak - 1;
+      const dd = price / runningPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
         st.ddPeakPrice = runningPeak;
         st.ddPeakTs = runningPeakTs;
-        st.troughPrice = lowPrice;
+        st.troughPrice = price;
         st.troughTs = ts;
       }
     }
@@ -419,7 +435,7 @@ function renderYearlyDrawdowns() {
     if (!tbody) return;
     tbody.innerHTML = "";
     if (!lastSeries || lastSeries.length < 10) return;
-    const rows = computeYearlyDrawdowns(lastSeries, lastLow);
+    const rows = computeYearlyDrawdowns(lastSeries);
     let totalDD = 0;
     let ddCount = 0;
     let totalRec = 0;
