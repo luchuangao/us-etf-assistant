@@ -365,24 +365,17 @@ function runDca() {
 function computeYearlyDrawdowns(series) {
   const pts = series.filter(p => p[1] != null);
   const byYear = new Map();
-  let yearlyPeak = -Infinity;
-  let yearlyPeakTs = null;
-  let currentYear = null;
+  let runningPeak = -Infinity;
+  let runningPeakTs = null;
 
   for (let i = 0; i < pts.length; i++) {
     const ts = pts[i][0];
     const price = pts[i][1];
     const y = new Date(ts).getFullYear();
 
-    if (y !== currentYear) {
-      currentYear = y;
-      yearlyPeak = price;
-      yearlyPeakTs = ts;
-    }
-
-    if (price > yearlyPeak) {
-      yearlyPeak = price;
-      yearlyPeakTs = ts;
+    if (price > runningPeak) {
+      runningPeak = price;
+      runningPeakTs = ts;
     }
 
     let st = byYear.get(y);
@@ -391,12 +384,12 @@ function computeYearlyDrawdowns(series) {
       byYear.set(y, st);
     }
 
-    if (yearlyPeak > 0) {
-      const dd = price / yearlyPeak - 1;
+    if (runningPeak > 0) {
+      const dd = price / runningPeak - 1;
       if (dd < st.maxDD) {
         st.maxDD = dd;
-        st.ddPeakPrice = yearlyPeak;
-        st.ddPeakTs = yearlyPeakTs;
+        st.ddPeakPrice = runningPeak;
+        st.ddPeakTs = runningPeakTs;
         st.troughPrice = price;
         st.troughTs = ts;
       }
@@ -448,17 +441,24 @@ function renderYearlyDrawdowns() {
       if (r.ddPeakTs && r.troughTs) {
         const start = formatDate(r.ddPeakTs);
         const end = formatDate(r.troughTs);
-        if (start.substring(0,4) === end.substring(0,4)) {
-           ddDate = `${start} 至 ${end.substring(5)}`;
+        
+        // 如果是当前年份且未修复，结束日期显示为"至今"
+        const currentYear = new Date().getFullYear();
+        if (r.year === currentYear && r.recoveryDays == null) {
+           ddDate = `${start} 至今`;
         } else {
-           // 跨年的情况，缩短年份显示例如 2021-12-27 至 23-01-05，以节省空间
-           ddDate = `${start.substring(2)} 至 ${end.substring(2)}`;
+           if (start.substring(0,4) === end.substring(0,4)) {
+              ddDate = `${start} 至 ${end.substring(5)}`;
+           } else {
+              // 跨年的情况，缩短年份显示例如 2021-12-27 至 23-01-05，以节省空间
+              ddDate = `${start.substring(2)} 至 ${end.substring(2)}`;
+           }
         }
       } else if (r.troughTs) {
         ddDate = formatDate(r.troughTs);
       }
       
-      const rec = r.recoveryDays == null ? "--" : String(r.recoveryDays);
+      const rec = r.recoveryDays == null ? "未修复" : String(r.recoveryDays);
       tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px; text-align: center; white-space: nowrap;">${ddDate}</td><td>${rec}</td>`;
       tbody.appendChild(tr);
     }
