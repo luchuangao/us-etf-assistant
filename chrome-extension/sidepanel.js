@@ -435,17 +435,37 @@ function computeYearlyDrawdowns(series) {
   return arr;
 }
 
-function renderYearlyDrawdowns() {
+async function renderYearlyDrawdowns() {
   try {
     const tbody = getEl("ddTable");
     if (!tbody) return;
     tbody.innerHTML = "";
     if (!lastSeries || lastSeries.length < 10) return;
     
-    // 直接使用当前时间范围的切片数据进行计算。
-    // 这意味着：如果在“1年”视图下，回撤是相对于“过去1年内的最高点”计算的；
-    // 如果在“5年”视图下，回撤是相对于“过去5年内的最高点”计算的。
-    const rows = computeYearlyDrawdowns(lastSeries);
+    // 为了准确计算“过去一年的最高点”，必须使用完整的历史数据。
+    // 否则在“1年”视图下，年初的数据往前找不到过去一年的数据，会导致最高点基准错误，算出的回撤偏小。
+    let seriesToCompute = lastSeries;
+    if (state.range !== "max") {
+       const cachedMax = readCachedChart(state.symbol, "max");
+       if (cachedMax && cachedMax.series && cachedMax.series.length) {
+         seriesToCompute = cachedMax.series;
+       } else {
+         try {
+           const chartMax = await YahooAPI.fetchChart(state.symbol, "max");
+           if (chartMax && chartMax.series) {
+             seriesToCompute = chartMax.series;
+           }
+         } catch(e) {
+           console.warn("Failed to fetch max series for drawdowns", e);
+         }
+       }
+    }
+    
+    const allRows = computeYearlyDrawdowns(seriesToCompute);
+    
+    // 只展示当前用户选择的年份范围
+    const visibleYears = new Set(lastSeries.map(p => new Date(p[0]).getFullYear()));
+    const rows = allRows.filter(r => visibleYears.has(Number(r.year)));
     
     let totalDD = 0;
     let ddCount = 0;
