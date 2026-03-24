@@ -435,38 +435,32 @@ function computeYearlyDrawdowns(series) {
   return arr;
 }
 
-async function renderYearlyDrawdowns() {
+function renderYearlyDrawdowns() {
   try {
     const tbody = getEl("ddTable");
     if (!tbody) return;
     tbody.innerHTML = "";
     if (!lastSeries || lastSeries.length < 10) return;
     
-    // 为了让“滚动一年（252天）”的回撤算法在各种视图下结果一致，
-    // 必须确保输入的数据长度足够支撑这个 252 天的滑动窗口。
-    // 因此，我们强制拉取 max 数据进行计算，然后再按当前视图过滤展示。
-    let seriesToCompute = lastSeries;
-    if (state.range !== "max") {
-       const cachedMax = readCachedChart(state.symbol, "max");
-       if (cachedMax && cachedMax.series && cachedMax.series.length) {
-         seriesToCompute = cachedMax.series;
-       } else {
-         try {
-           const chartMax = await YahooAPI.fetchChart(state.symbol, "max");
-           if (chartMax && chartMax.series) {
-             seriesToCompute = chartMax.series;
-           }
-         } catch(e) {
-           console.warn("Failed to fetch max series for drawdowns", e);
-         }
-       }
-    }
+    // 硬编码的年份回撤原因映射字典
+    const DRAWDOWN_REASONS = {
+      "2024": "降息预期摇摆 / 日元套息平仓",
+      "2023": "高利率维持 / 地区银行危机",
+      "2022": "美联储激进加息 / 俄乌冲突",
+      "2020": "COVID-19 全球疫情爆发",
+      "2018": "中美贸易战 / 联储缩表担忧",
+      "2015": "人民币汇改 / 能源价格暴跌",
+      "2011": "欧债危机 / 美国主权评级下调",
+      "2008": "次贷危机 / 全球金融海啸",
+      "2002": "互联网泡沫余波 / 安然丑闻",
+      "2001": "911事件 / 互联网泡沫破裂",
+      "2000": "互联网泡沫破裂"
+    };
     
-    const allRows = computeYearlyDrawdowns(seriesToCompute);
-    
-    // 只保留当前视图涉及的年份
-    const visibleYears = new Set(lastSeries.map(p => new Date(p[0]).getFullYear()));
-    const rows = allRows.filter(r => visibleYears.has(Number(r.year)));
+    // 直接使用当前时间范围的切片数据进行计算。
+    // 这意味着：如果在“1年”视图下，回撤是相对于“过去1年内的最高点”计算的；
+    // 如果在“5年”视图下，回撤是相对于“过去5年内的最高点”计算的。
+    const rows = computeYearlyDrawdowns(lastSeries);
     
     let totalDD = 0;
     let ddCount = 0;
@@ -503,7 +497,15 @@ async function renderYearlyDrawdowns() {
       }
       
       const rec = r.recoveryDays == null ? "未修复" : String(r.recoveryDays);
-      tr.innerHTML = `<td>${r.year}</td><td class="${dd < 0 ? "red" : ""}">${ddText}</td><td style="font-size: 11px; text-align: center; white-space: nowrap;">${ddDate}</td><td>${rec}</td>`;
+      const reason = DRAWDOWN_REASONS[r.year] || "--";
+      
+      tr.innerHTML = `
+        <td>${r.year}</td>
+        <td class="${dd < 0 ? "red" : ""}">${ddText}</td>
+        <td style="font-size: 11px; text-align: center; white-space: nowrap;">${ddDate}</td>
+        <td>${rec}</td>
+        <td style="font-size: 11px; text-align: left; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${reason}">${reason}</td>
+      `;
       tbody.appendChild(tr);
     }
 
@@ -514,7 +516,7 @@ async function renderYearlyDrawdowns() {
       const trAvg = document.createElement("tr");
       trAvg.style.fontWeight = "bold";
       trAvg.style.backgroundColor = "#f9fafb";
-      trAvg.innerHTML = `<td>平均</td><td class="red">${(avgDD * 100).toFixed(1)}%</td><td style="text-align: center; color: var(--muted);">--</td><td>${avgRec}</td>`;
+      trAvg.innerHTML = `<td>平均</td><td class="red">${(avgDD * 100).toFixed(1)}%</td><td style="text-align: center; color: var(--muted);">--</td><td>${avgRec}</td><td>--</td>`;
       tbody.appendChild(trAvg);
     }
   } catch (e) {
