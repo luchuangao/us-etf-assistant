@@ -54,10 +54,11 @@
     <style>
       /* 针对表格特定列设置宽度，避免挤压换行 */
       #panel-dd table { table-layout: fixed; }
-      #panel-dd th:nth-child(1), #panel-dd td:nth-child(1) { width: 14%; } /* 年份 */
-      #panel-dd th:nth-child(2), #panel-dd td:nth-child(2) { width: 20%; } /* 最大回撤 */
-      #panel-dd th:nth-child(3), #panel-dd td:nth-child(3) { width: 48%; text-align: center; } /* 发生日期 (较宽) */
-      #panel-dd th:nth-child(4), #panel-dd td:nth-child(4) { width: 18%; } /* 修复天数 */
+      #panel-dd th:nth-child(1), #panel-dd td:nth-child(1) { width: 12%; } /* 年份 */
+      #panel-dd th:nth-child(2), #panel-dd td:nth-child(2) { width: 14%; } /* 最大回撤 */
+      #panel-dd th:nth-child(3), #panel-dd td:nth-child(3) { width: 33%; text-align: center; } /* 发生日期 (较宽) */
+      #panel-dd th:nth-child(4), #panel-dd td:nth-child(4) { width: 15%; } /* 修复天数 */
+      #panel-dd th:nth-child(5), #panel-dd td:nth-child(5) { width: 26%; text-align: left; } /* 历史大事件 */
     </style>
   </head>
 <body>
@@ -138,11 +139,11 @@
           <table>
             <thead>
               <tr>
-                <th style="width:12%">年份</th>
-                <th style="width:15%">最大回撤</th>
-                <th style="width:28%; text-align: center;">发生日期</th>
-                <th style="width:15%">修复天数</th>
-                <th style="width:30%; text-align: left;">历史大事件</th>
+                <th>年份</th>
+                <th>最大回撤</th>
+                <th style="text-align: center;">发生日期</th>
+                <th>修复天数</th>
+                <th style="text-align: left;">历史大事件</th>
               </tr>
             </thead>
             <tbody id="ddTable"></tbody>

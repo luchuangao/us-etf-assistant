@@ -504,7 +504,7 @@ function renderYearlyDrawdowns() {
         <td class="${dd < 0 ? "red" : ""}">${ddText}</td>
         <td style="font-size: 11px; text-align: center; white-space: nowrap;">${ddDate}</td>
         <td>${rec}</td>
-        <td style="font-size: 11px; text-align: left; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${reason}">${reason}</td>
+        <td style="font-size: 11px; text-align: left; color: var(--muted); word-break: break-all;" title="${reason}">${reason}</td>
       `;
       tbody.appendChild(tr);
     }
